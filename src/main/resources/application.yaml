@@ -1,0 +1,3 @@
+spring:
+  application:
+    name: zitadel-spring-boot-starter
