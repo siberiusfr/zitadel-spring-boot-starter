@@ -124,6 +124,8 @@ class ZitadelManagementServiceIntegrationTest {
         if (::network.isInitialized) network.close()
     }
 
+    private fun findFreePort(): Int = ServerSocket(0).use { it.localPort }
+
     private fun waitForZitadelApi(port: Int) {
         val maxRetries = 30
         val retryDelay = 2000L
