@@ -55,6 +55,18 @@ dependencies {
 
 Add the following to your `application.yml`:
 
+### Option 1: Personal Access Token (simple, dev-friendly)
+
+```yaml
+cyberious:
+  zitadel:
+    domain: https://your-instance.zitadel.cloud
+    personal-access-token: "R7teAfcmLuIQV-VKoW0Ap..."
+    default-organization-id: "optional-org-id"
+```
+
+### Option 2: Service Account Key JSON (production, more secure)
+
 ```yaml
 cyberious:
   zitadel:
@@ -69,7 +81,7 @@ cyberious:
     default-organization-id: "optional-org-id"
 ```
 
-> **Note:** The `ZitadelManagementService` bean is only created when `cyberious.zitadel.service-account-key-json` is present. You can safely include this starter as a dependency without providing credentials — the auto-configuration will simply be skipped.
+> **Note:** The `ZitadelManagementService` bean is only created when either `personal-access-token` or `service-account-key-json` is present. You can safely include this starter as a dependency without providing credentials — the auto-configuration will simply be skipped.
 
 ## Usage
 
@@ -159,12 +171,20 @@ data class ProjectRole(val key: String, val displayName: String, val group: Stri
 
 ## Authentication
 
-The starter uses JWT Profile authentication (service account). It automatically:
+The starter supports two authentication modes:
+
+### Personal Access Token (PAT)
+When `personal-access-token` is configured, it is used directly as the Bearer token. No token exchange or refresh is needed — ideal for development and bootstrapping.
+
+### JWT Profile (Service Account Key)
+When `service-account-key-json` is configured (and no PAT is set), the starter automatically:
 
 1. Parses the service account key JSON to extract credentials
 2. Generates a signed JWT (RS256) for authentication
 3. Exchanges the JWT for an OAuth2 access token via `/oauth/v2/token`
 4. Caches the token and refreshes it before expiry (60s buffer)
+
+If both are configured, PAT takes priority.
 
 ## Error Handling
 

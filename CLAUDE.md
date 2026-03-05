@@ -25,15 +25,15 @@ A Spring Boot starter library (not an application) that wraps Zitadel's IAM Mana
 
 ## Architecture
 
-**Auto-configuration flow:** Consumer adds the dependency, sets `cyberious.zitadel.*` properties in their `application.yml`, and gets a `ZitadelManagementService` bean auto-configured. The bean is only created when `cyberious.zitadel.service-account-key-json` is present — apps can safely include the starter without providing credentials.
+**Auto-configuration flow:** Consumer adds the dependency, sets `cyberious.zitadel.*` properties in their `application.yml`, and gets a `ZitadelManagementService` bean auto-configured. The bean is only created when either `cyberious.zitadel.service-account-key-json` or `cyberious.zitadel.personal-access-token` is present — apps can safely include the starter without providing credentials.
 
-- `ZitadelAutoConfiguration` - entry point registered in `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`. The bean uses `@ConditionalOnProperty(name = "cyberious.zitadel.service-account-key-json")` so the starter won't crash when config is absent.
-- `ZitadelProperties` - binds `cyberious.zitadel.*` (domain, serviceAccountKeyJson, defaultOrganizationId)
+- `ZitadelAutoConfiguration` - entry point registered in `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`. The bean uses `@ConditionalOnExpression` checking that either `service-account-key-json` or `personal-access-token` is present, so the starter won't crash when config is absent.
+- `ZitadelProperties` - binds `cyberious.zitadel.*` (domain, serviceAccountKeyJson, personalAccessToken, defaultOrganizationId)
 - `ZitadelManagementService` - the main facade. Handles JWT Profile auth (RS256 via nimbus-jose-jwt + BouncyCastle PEM parsing), token caching with 60s refresh buffer, and all Zitadel API calls via Spring 6 `RestClient`.
 
 **API version split:** Organization creation and user endpoints use Zitadel v2 API. Project, role, grant, and org lifecycle endpoints use v1 (`/management/v1/...`). Org-scoped calls pass `x-zitadel-orgid` header.
 
-**Authentication:** Service account key JSON is parsed to extract userId, keyId, privateKey. A signed JWT is exchanged for an OAuth2 access token at `/oauth/v2/token` using `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`.
+**Authentication:** Two modes supported. PAT mode: if `personalAccessToken` is set, it's used directly as Bearer token (no refresh). JWT Profile mode: service account key JSON is parsed to extract userId, keyId, privateKey; a signed JWT is exchanged for an OAuth2 access token at `/oauth/v2/token`. PAT takes priority if both are configured.
 
 ## Integration Tests
 

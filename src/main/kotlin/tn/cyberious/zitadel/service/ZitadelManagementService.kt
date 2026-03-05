@@ -42,6 +42,13 @@ class ZitadelManagementService(
     }
 
     private fun getAccessToken(): String {
+        if (properties.personalAccessToken.isNotBlank()) {
+            return properties.personalAccessToken
+        }
+        return getJwtProfileToken()
+    }
+
+    private fun getJwtProfileToken(): String {
         val now = Instant.now()
         if (cachedToken != null && now.isBefore(tokenExpiry.minusSeconds(60))) {
             return cachedToken!!
