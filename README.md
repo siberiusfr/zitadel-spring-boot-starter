@@ -1,5 +1,9 @@
 # Zitadel Spring Boot Starter
 
+[![CI](https://github.com/siberiusfr/zitadel-spring-boot-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/siberiusfr/zitadel-spring-boot-starter/actions/workflows/ci.yml)
+[![JitPack](https://jitpack.io/v/siberiusfr/zitadel-spring-boot-starter.svg)](https://jitpack.io/#siberiusfr/zitadel-spring-boot-starter)
+[![License](https://img.shields.io/github/license/siberiusfr/zitadel-spring-boot-starter)](LICENSE)
+
 A reusable Spring Boot starter that wraps the [Zitadel](https://zitadel.com/) IAM Management API, providing easy-to-use service methods for managing organizations, users, projects, and roles.
 
 ## Installation
