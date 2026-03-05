@@ -75,10 +75,12 @@ tasks.register<Test>("integrationTest") {
 	testClassesDirs = sourceSets["test"].output.classesDirs
 	classpath = sourceSets["test"].runtimeClasspath
 	shouldRunAfter(tasks.test)
-	environment("DOCKER_HOST", "tcp://localhost:2375")
-	environment("DOCKER_API_VERSION", "1.44")
-	systemProperty("docker.host", "tcp://localhost:2375")
-	systemProperty("docker.api.version", "1.44")
+	val dockerHost = System.getenv("DOCKER_HOST") ?: "tcp://localhost:2375"
+	val dockerApiVersion = System.getenv("DOCKER_API_VERSION") ?: "1.44"
+	environment("DOCKER_HOST", dockerHost)
+	environment("DOCKER_API_VERSION", dockerApiVersion)
+	systemProperty("docker.host", dockerHost)
+	systemProperty("docker.api.version", dockerApiVersion)
 }
 
 publishing {
