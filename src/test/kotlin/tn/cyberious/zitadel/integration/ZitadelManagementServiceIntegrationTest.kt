@@ -64,7 +64,7 @@ class ZitadelManagementServiceIntegrationTest {
         val hostPort = findFreePort()
         machinekeyDir = Files.createTempDirectory("zitadel-machinekey")
 
-        zitadel = GenericContainer("ghcr.io/zitadel/zitadel:latest")
+        zitadel = GenericContainer("ghcr.io/zitadel/zitadel:v2.71.6")
             .withNetwork(network)
             .withExposedPorts(8080)
             .dependsOn(postgres)

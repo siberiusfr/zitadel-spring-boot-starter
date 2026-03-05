@@ -180,11 +180,11 @@ class ZitadelManagementService(
     }
 
     fun deactivateOrganization(orgId: String) {
-        apiPost("/admin/v1/orgs/$orgId/_deactivate", emptyMap<String, Any>(), JsonNode::class.java)
+        apiPost("/v2beta/organizations/$orgId/deactivate", emptyMap<String, Any>(), JsonNode::class.java)
     }
 
     fun reactivateOrganization(orgId: String) {
-        apiPost("/admin/v1/orgs/$orgId/_reactivate", emptyMap<String, Any>(), JsonNode::class.java)
+        apiPost("/v2beta/organizations/$orgId/reactivate", emptyMap<String, Any>(), JsonNode::class.java)
     }
 
     // --- Users ---

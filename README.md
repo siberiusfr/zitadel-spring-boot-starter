@@ -99,8 +99,8 @@ class MyService(private val zitadel: ZitadelManagementService) {
 |--------|-------------|
 | `createOrganization(name)` | `POST /v2/organizations` |
 | `getOrganization(orgId)` | `GET /management/v1/orgs/me` |
-| `deactivateOrganization(orgId)` | `POST /admin/v1/orgs/{orgId}/_deactivate` |
-| `reactivateOrganization(orgId)` | `POST /admin/v1/orgs/{orgId}/_reactivate` |
+| `deactivateOrganization(orgId)` | `POST /v2beta/organizations/{orgId}/deactivate` |
+| `reactivateOrganization(orgId)` | `POST /v2beta/organizations/{orgId}/reactivate` |
 
 ### Users
 
