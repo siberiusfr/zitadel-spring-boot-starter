@@ -1,0 +1,20 @@
+FirstInstance:
+  InstanceName: "TestInstance"
+  DefaultLanguage: "en"
+  MachineKeyPath: /machinekey/zitadel-admin-sa.json
+  PatPath: /machinekey/zitadel-admin-sa.pat
+  Org:
+    Name: "TestOrg"
+    Human:
+      UserName: "admin@test.localhost"
+      FirstName: "Admin"
+      LastName: "User"
+      Password: "Password1!"
+    Machine:
+      Machine:
+        Username: zitadel-admin-sa
+        Name: "Admin SA"
+      MachineKey:
+        Type: 1
+      Pat:
+        ExpirationDate: "2030-01-01T00:00:00Z"
