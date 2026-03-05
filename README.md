@@ -17,7 +17,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.siberiusfr:zitadel-spring-boot-starter:v0.2.0")
+    implementation("com.github.siberiusfr:zitadel-spring-boot-starter:v0.2.1")
 }
 ```
 
@@ -30,7 +30,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.siberiusfr:zitadel-spring-boot-starter:v0.2.0'
+    implementation 'com.github.siberiusfr:zitadel-spring-boot-starter:v0.2.1'
 }
 ```
 
@@ -47,7 +47,7 @@ dependencies {
 <dependency>
     <groupId>com.github.siberiusfr</groupId>
     <artifactId>zitadel-spring-boot-starter</artifactId>
-    <version>v0.2.0</version>
+    <version>v0.2.1</version>
 </dependency>
 ```
 
