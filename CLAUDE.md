@@ -12,7 +12,8 @@ A Spring Boot starter library (not an application) that wraps Zitadel's IAM Mana
 ./gradlew build              # compile + unit tests (excludes integration)
 ./gradlew test               # unit tests only
 ./gradlew integrationTest    # integration tests (requires Docker)
-./gradlew test --tests "tn.cyberious.zitadel.service.ZitadelManagementServiceTest"  # single test class
+./gradlew test --tests "tn.cyberious.zitadel.service.ZitadelManagementServiceTest"  # single unit test class
+./gradlew integrationTest --tests "*.ZitadelManagementServiceIntegrationTest.should create organization"  # single integration test
 ```
 
 ## Key Build Configuration
@@ -25,15 +26,18 @@ A Spring Boot starter library (not an application) that wraps Zitadel's IAM Mana
 
 ## Architecture
 
-**Auto-configuration flow:** Consumer adds the dependency, sets `cyberious.zitadel.*` properties in their `application.yml`, and gets a `ZitadelManagementService` bean auto-configured. The bean is only created when either `cyberious.zitadel.service-account-key-json` or `cyberious.zitadel.personal-access-token` is present — apps can safely include the starter without providing credentials.
+**Auto-configuration flow:** Consumer adds the dependency, sets `cyberious.zitadel.*` properties in their `application.yml`, and gets a `ZitadelManagementService` bean auto-configured. The bean is only created when at least one auth method is configured (service-account-key-json, personal-access-token, or client-id + client-secret) — apps can safely include the starter without providing credentials.
 
-- `ZitadelAutoConfiguration` - entry point registered in `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`. The bean uses `@ConditionalOnExpression` checking that either `service-account-key-json` or `personal-access-token` is present, so the starter won't crash when config is absent.
-- `ZitadelProperties` - binds `cyberious.zitadel.*` (domain, serviceAccountKeyJson, personalAccessToken, defaultOrganizationId)
-- `ZitadelManagementService` - the main facade. Handles JWT Profile auth (RS256 via nimbus-jose-jwt + BouncyCastle PEM parsing), token caching with 60s refresh buffer, and all Zitadel API calls via Spring 6 `RestClient`.
+- `ZitadelAutoConfiguration` - entry point registered in `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`. The bean uses `@ConditionalOnExpression` checking that either `service-account-key-json`, `personal-access-token`, or `client-id`+`client-secret` is present, so the starter won't crash when config is absent.
+- `ZitadelProperties` - binds `cyberious.zitadel.*` (domain, serviceAccountKeyJson, personalAccessToken, clientId, clientSecret, projectId, defaultOrganizationId)
+- `ZitadelManagementService` - the main facade. Handles three auth modes, token caching with 60s refresh buffer, and all Zitadel API calls via Spring 6 `RestClient`.
 
-**API version split:** Organization creation and user endpoints use Zitadel v2 API. Project, role, grant, and org lifecycle endpoints use v1 (`/management/v1/...`). Org-scoped calls pass `x-zitadel-orgid` header.
+**API version split:** Organization creation, user endpoints (CRUD, list, deactivate/reactivate) use Zitadel v2 API. Project, role, grant endpoints use v1 (`/management/v1/...`). Organization deactivate/reactivate uses `/admin/v1/orgs/{orgId}`. Org-scoped calls pass `x-zitadel-orgid` header.
 
-**Authentication:** Two modes supported. PAT mode: if `personalAccessToken` is set, it's used directly as Bearer token (no refresh). JWT Profile mode: service account key JSON is parsed to extract userId, keyId, privateKey; a signed JWT is exchanged for an OAuth2 access token at `/oauth/v2/token`. PAT takes priority if both are configured.
+**Authentication:** Three modes supported (priority order):
+1. **PAT mode:** if `personalAccessToken` is set, used directly as Bearer token (no refresh)
+2. **JWT Profile mode:** service account key JSON parsed to extract userId, keyId, privateKey; RS256 signed JWT exchanged for OAuth2 access token at `/oauth/v2/token` (nimbus-jose-jwt + BouncyCastle)
+3. **Client Credentials mode:** `clientId` + `clientSecret` exchanged via `client_credentials` grant at `/oauth/v2/token`
 
 ## Integration Tests
 
@@ -43,7 +47,7 @@ Integration tests use Testcontainers with PostgreSQL + Zitadel (pinned to `v2.71
 
 **On CI (GitHub Actions):** Docker available natively via Unix socket. No special configuration needed.
 
-The test spins up PostgreSQL + Zitadel containers, creates a service account via `start-from-init` steps config, and runs 16 integration tests covering all service methods.
+The test spins up PostgreSQL + Zitadel containers, creates a service account via `start-from-init` steps config, and runs integration tests covering all service methods including user lifecycle (create, list, deactivate, reactivate), role management (assign, update, search grants), organization lifecycle, and project management.
 
 ## CI/CD
 
@@ -54,10 +58,14 @@ The test spins up PostgreSQL + Zitadel containers, creates a service account via
 ## Zitadel API Gotchas
 
 - Human users: `POST /v2/users/human` (not `/v2/users`)
+- List users: `POST /v2/users` (POST with query body, not GET)
 - Machine users: `POST /management/v1/users/machine` (no v2 endpoint yet)
 - Get org: `GET /management/v1/orgs/me` with `x-zitadel-orgid` header (not `/v2/organizations/{id}`)
-- Deactivate/reactivate org: `POST /management/v1/orgs/me/_deactivate` with `x-zitadel-orgid` header
+- Deactivate/reactivate org: `POST /admin/v1/orgs/{orgId}/_deactivate` (direct by ID, no org header needed)
+- Deactivate/reactivate user: `POST /v2/users/{userId}/deactivate` and `/reactivate`
 - Bulk roles: `POST /management/v1/projects/{id}/roles/_bulk` with `roles` array wrapper
 - Project grants: `POST /management/v1/projects/{id}/grants` with owner org in `x-zitadel-orgid` header
+- User grants search: `POST /management/v1/users/grants/_search` with queries array
+- Update user grant: `PUT /management/v1/users/{userId}/grants/{grantId}` (need grant ID from search)
 - PEM keys from Zitadel are PKCS#1 format (`BEGIN RSA PRIVATE KEY`), requiring BouncyCastle to parse
 - Password reset: `POST /v2/users/{userId}/password_reset` with `sendLink.notificationType`

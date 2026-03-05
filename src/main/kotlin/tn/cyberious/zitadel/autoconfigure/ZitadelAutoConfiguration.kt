@@ -14,7 +14,9 @@ class ZitadelAutoConfiguration {
     @Bean
     @ConditionalOnExpression(
         "'\${cyberious.zitadel.service-account-key-json:}'.length() > 0 " +
-            "|| '\${cyberious.zitadel.personal-access-token:}'.length() > 0"
+            "|| '\${cyberious.zitadel.personal-access-token:}'.length() > 0 " +
+            "|| ('\${cyberious.zitadel.client-id:}'.length() > 0 " +
+            "&& '\${cyberious.zitadel.client-secret:}'.length() > 0)"
     )
     fun zitadelManagementService(properties: ZitadelProperties): ZitadelManagementService {
         return ZitadelManagementService(properties)

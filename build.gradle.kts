@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "tn.cyberious"
-version = "0.3.0"
+version = "0.4.0"
 description = "Spring Boot Starter for Zitadel IAM Management API"
 
 java {

@@ -24,6 +24,19 @@ class ZitadelManagementServiceTest {
     }
 
     @Test
+    fun `properties should bind client credentials`() {
+        val props = ZitadelProperties(
+            domain = "https://test.zitadel.cloud",
+            clientId = "my-client-id",
+            clientSecret = "my-client-secret",
+            projectId = "project-123",
+        )
+        assertEquals("my-client-id", props.clientId)
+        assertEquals("my-client-secret", props.clientSecret)
+        assertEquals("project-123", props.projectId)
+    }
+
+    @Test
     fun `service account key json should be parseable`() {
         val json = """
             {
@@ -45,6 +58,10 @@ class ZitadelManagementServiceTest {
         val props = ZitadelProperties()
         assertEquals("", props.domain)
         assertEquals("", props.serviceAccountKeyJson)
+        assertEquals("", props.personalAccessToken)
+        assertEquals("", props.clientId)
+        assertEquals("", props.clientSecret)
+        assertEquals("", props.projectId)
         assertEquals(null, props.defaultOrganizationId)
     }
 }

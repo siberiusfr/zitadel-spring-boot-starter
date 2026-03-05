@@ -199,6 +199,9 @@ class ZitadelManagementServiceIntegrationTest {
         )
         assertNotNull(user.id)
         assertTrue(user.id.isNotBlank(), "User ID should not be blank")
+        assertEquals("john.doe@integration-test.com", user.email)
+        assertEquals("John", user.firstName)
+        assertEquals("Doe", user.lastName)
         createdHumanUserId = user.id
         println("Created human user: ${user.id}")
     }
@@ -307,10 +310,107 @@ class ZitadelManagementServiceIntegrationTest {
         println("Assigned role 'admin' to user $createdHumanUserId")
     }
 
-    // --- Project grant tests ---
+    // --- Search user grants ---
 
     @Test
     @Order(11)
+    fun `should search user grants`() {
+        assertTrue(createdOrgId.isNotBlank(), "Organization must be created first")
+        assertTrue(createdProjectId.isNotBlank(), "Project must be created first")
+        assertTrue(createdHumanUserId.isNotBlank(), "Human user must be created first")
+        val grants = service.searchUserGrants(
+            orgId = createdOrgId,
+            projectId = createdProjectId,
+            userId = createdHumanUserId,
+        )
+        assertTrue(grants.isNotEmpty(), "Should find at least one grant")
+        assertEquals(createdHumanUserId, grants[0].userId)
+        assertTrue(grants[0].roleKeys.contains("admin"), "Grant should contain admin role")
+        println("Found ${grants.size} grants for user $createdHumanUserId: ${grants[0].roleKeys}")
+    }
+
+    // --- Update user roles ---
+
+    @Test
+    @Order(12)
+    fun `should update user roles`() {
+        assertTrue(createdOrgId.isNotBlank(), "Organization must be created first")
+        assertTrue(createdProjectId.isNotBlank(), "Project must be created first")
+        assertTrue(createdHumanUserId.isNotBlank(), "Human user must be created first")
+
+        // Need to set projectId on properties for updateUserRoles to work
+        // Re-create service with projectId set
+        val props = ZitadelProperties(
+            domain = service.let {
+                // Get domain from existing service by getting the access token endpoint
+                val field = it.javaClass.getDeclaredField("properties")
+                field.isAccessible = true
+                (field.get(it) as ZitadelProperties).domain
+            },
+            serviceAccountKeyJson = service.let {
+                val field = it.javaClass.getDeclaredField("properties")
+                field.isAccessible = true
+                (field.get(it) as ZitadelProperties).serviceAccountKeyJson
+            },
+            projectId = createdProjectId,
+        )
+        val serviceWithProject = ZitadelManagementService(props)
+
+        assertDoesNotThrow {
+            serviceWithProject.updateUserRoles(
+                orgId = createdOrgId,
+                userId = createdHumanUserId,
+                roles = listOf("admin", "syndic"),
+            )
+        }
+
+        // Verify roles were updated
+        val grants = serviceWithProject.searchUserGrants(
+            orgId = createdOrgId,
+            projectId = createdProjectId,
+            userId = createdHumanUserId,
+        )
+        assertTrue(grants.isNotEmpty(), "Should find grant after update")
+        assertTrue(grants[0].roleKeys.containsAll(listOf("admin", "syndic")), "Grant should contain updated roles")
+        println("Updated roles for user $createdHumanUserId: ${grants[0].roleKeys}")
+    }
+
+    // --- List users ---
+
+    @Test
+    @Order(13)
+    fun `should list users`() {
+        assertTrue(createdOrgId.isNotBlank(), "Organization must be created first")
+        val result = service.listUsers(
+            orgId = createdOrgId,
+            offset = 0,
+            limit = 10,
+        )
+        assertTrue(result.users.isNotEmpty(), "Should find at least one user")
+        assertTrue(result.totalCount > 0, "Total count should be > 0")
+        println("Listed ${result.users.size} users (total: ${result.totalCount})")
+    }
+
+    @Test
+    @Order(14)
+    fun `should list users with search`() {
+        assertTrue(createdOrgId.isNotBlank(), "Organization must be created first")
+        val result = service.listUsers(
+            orgId = createdOrgId,
+            search = "john",
+        )
+        assertTrue(result.users.isNotEmpty(), "Should find user matching 'john'")
+        assertTrue(
+            result.users.any { it.email?.contains("john", ignoreCase = true) == true },
+            "Should find john.doe user"
+        )
+        println("Search 'john' found ${result.users.size} users")
+    }
+
+    // --- Project grant tests ---
+
+    @Test
+    @Order(15)
     fun `should grant project to another organization`() {
         assertTrue(createdOrgId.isNotBlank(), "Organization must be created first")
         assertTrue(createdProjectId.isNotBlank(), "Project must be created first")
@@ -327,10 +427,36 @@ class ZitadelManagementServiceIntegrationTest {
         println("Granted project $createdProjectId to org $createdGrantedOrgId")
     }
 
+    // --- User lifecycle tests ---
+
+    @Test
+    @Order(16)
+    fun `should deactivate user`() {
+        assertTrue(createdHumanUserId.isNotBlank(), "Human user must be created first")
+        assertDoesNotThrow {
+            service.deactivateUser(createdHumanUserId)
+        }
+        val user = service.getUserById(createdHumanUserId)
+        assertEquals("INACTIVE", user.state)
+        println("Deactivated user $createdHumanUserId")
+    }
+
+    @Test
+    @Order(17)
+    fun `should reactivate user`() {
+        assertTrue(createdHumanUserId.isNotBlank(), "Human user must be created first")
+        assertDoesNotThrow {
+            service.reactivateUser(createdHumanUserId)
+        }
+        val user = service.getUserById(createdHumanUserId)
+        assertEquals("ACTIVE", user.state)
+        println("Reactivated user $createdHumanUserId")
+    }
+
     // --- Organization lifecycle tests ---
 
     @Test
-    @Order(12)
+    @Order(18)
     fun `should deactivate organization`() {
         assertTrue(createdGrantedOrgId.isNotBlank(), "Granted org must be created first")
         assertDoesNotThrow {
@@ -340,7 +466,7 @@ class ZitadelManagementServiceIntegrationTest {
     }
 
     @Test
-    @Order(13)
+    @Order(19)
     fun `should reactivate organization`() {
         assertTrue(createdGrantedOrgId.isNotBlank(), "Granted org must be created first")
         assertDoesNotThrow {
@@ -352,7 +478,7 @@ class ZitadelManagementServiceIntegrationTest {
     // --- User with password tests ---
 
     @Test
-    @Order(14)
+    @Order(20)
     fun `should create human user with password`() {
         assertTrue(createdOrgId.isNotBlank(), "Organization must be created first")
         val user = service.createHumanUser(
@@ -370,7 +496,7 @@ class ZitadelManagementServiceIntegrationTest {
     }
 
     @Test
-    @Order(15)
+    @Order(21)
     fun `should send password reset email`() {
         assertTrue(createdUserWithPasswordId.isNotBlank(), "User with password must be created first")
         assertDoesNotThrow {
@@ -382,7 +508,7 @@ class ZitadelManagementServiceIntegrationTest {
     // --- Error handling tests ---
 
     @Test
-    @Order(20)
+    @Order(30)
     fun `should throw ZitadelException for non-existent user`() {
         val exception = assertThrows<ZitadelException> {
             service.getUserById("non-existent-user-id-12345")
