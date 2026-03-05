@@ -25,9 +25,9 @@ A Spring Boot starter library (not an application) that wraps Zitadel's IAM Mana
 
 ## Architecture
 
-**Auto-configuration flow:** Consumer adds the dependency, sets `cyberious.zitadel.domain` in their `application.yml`, and gets a `ZitadelManagementService` bean auto-configured.
+**Auto-configuration flow:** Consumer adds the dependency, sets `cyberious.zitadel.*` properties in their `application.yml`, and gets a `ZitadelManagementService` bean auto-configured. The bean is only created when `cyberious.zitadel.service-account-key-json` is present — apps can safely include the starter without providing credentials.
 
-- `ZitadelAutoConfiguration` - entry point registered in `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`. Activates only when `cyberious.zitadel.domain` property is set.
+- `ZitadelAutoConfiguration` - entry point registered in `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`. The bean uses `@ConditionalOnProperty(name = "cyberious.zitadel.service-account-key-json")` so the starter won't crash when config is absent.
 - `ZitadelProperties` - binds `cyberious.zitadel.*` (domain, serviceAccountKeyJson, defaultOrganizationId)
 - `ZitadelManagementService` - the main facade. Handles JWT Profile auth (RS256 via nimbus-jose-jwt + BouncyCastle PEM parsing), token caching with 60s refresh buffer, and all Zitadel API calls via Spring 6 `RestClient`.
 

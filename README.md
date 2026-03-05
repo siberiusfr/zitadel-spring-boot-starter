@@ -69,6 +69,8 @@ cyberious:
     default-organization-id: "optional-org-id"
 ```
 
+> **Note:** The `ZitadelManagementService` bean is only created when `cyberious.zitadel.service-account-key-json` is present. You can safely include this starter as a dependency without providing credentials — the auto-configuration will simply be skipped.
+
 ## Usage
 
 Once configured, inject `ZitadelManagementService` into your Spring beans:
