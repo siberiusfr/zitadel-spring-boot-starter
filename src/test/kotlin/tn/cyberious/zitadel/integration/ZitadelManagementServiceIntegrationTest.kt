@@ -11,6 +11,7 @@ import org.testcontainers.utility.MountableFile
 import org.slf4j.LoggerFactory
 import tn.cyberious.zitadel.config.ZitadelProperties
 import tn.cyberious.zitadel.exception.ZitadelException
+import tn.cyberious.zitadel.models.ProjectRole
 import tn.cyberious.zitadel.service.ZitadelManagementService
 import java.net.ServerSocket
 import java.nio.file.Files
@@ -32,6 +33,8 @@ class ZitadelManagementServiceIntegrationTest {
     private var createdHumanUserId: String = ""
     private var createdMachineUserId: String = ""
     private var createdProjectId: String = ""
+    private var createdGrantedOrgId: String = ""
+    private var createdUserWithPasswordId: String = ""
 
     companion object {
         @JvmStatic
@@ -271,6 +274,24 @@ class ZitadelManagementServiceIntegrationTest {
 
     @Test
     @Order(9)
+    fun `should add roles to project in bulk`() {
+        assertTrue(createdOrgId.isNotBlank(), "Organization must be created first")
+        assertTrue(createdProjectId.isNotBlank(), "Project must be created first")
+        assertDoesNotThrow {
+            service.addRolesToProject(
+                orgId = createdOrgId,
+                projectId = createdProjectId,
+                roles = listOf(
+                    ProjectRole(key = "syndic", displayName = "Syndic", group = "management"),
+                    ProjectRole(key = "resident", displayName = "Resident", group = "users"),
+                )
+            )
+        }
+        println("Added bulk roles to project $createdProjectId")
+    }
+
+    @Test
+    @Order(10)
     fun `should assign role to user`() {
         assertTrue(createdOrgId.isNotBlank(), "Organization must be created first")
         assertTrue(createdProjectId.isNotBlank(), "Project must be created first")
@@ -286,10 +307,82 @@ class ZitadelManagementServiceIntegrationTest {
         println("Assigned role 'admin' to user $createdHumanUserId")
     }
 
+    // --- Project grant tests ---
+
+    @Test
+    @Order(11)
+    fun `should grant project to another organization`() {
+        assertTrue(createdOrgId.isNotBlank(), "Organization must be created first")
+        assertTrue(createdProjectId.isNotBlank(), "Project must be created first")
+        val grantedOrg = service.createOrganization("GrantedTestOrg")
+        createdGrantedOrgId = grantedOrg.id
+        assertDoesNotThrow {
+            service.grantProjectToOrganization(
+                orgId = createdOrgId,
+                projectId = createdProjectId,
+                grantedOrgId = createdGrantedOrgId,
+                roleKeys = listOf("admin", "syndic")
+            )
+        }
+        println("Granted project $createdProjectId to org $createdGrantedOrgId")
+    }
+
+    // --- Organization lifecycle tests ---
+
+    @Test
+    @Order(12)
+    fun `should deactivate organization`() {
+        assertTrue(createdGrantedOrgId.isNotBlank(), "Granted org must be created first")
+        assertDoesNotThrow {
+            service.deactivateOrganization(createdGrantedOrgId)
+        }
+        println("Deactivated organization $createdGrantedOrgId")
+    }
+
+    @Test
+    @Order(13)
+    fun `should reactivate organization`() {
+        assertTrue(createdGrantedOrgId.isNotBlank(), "Granted org must be created first")
+        assertDoesNotThrow {
+            service.reactivateOrganization(createdGrantedOrgId)
+        }
+        println("Reactivated organization $createdGrantedOrgId")
+    }
+
+    // --- User with password tests ---
+
+    @Test
+    @Order(14)
+    fun `should create human user with password`() {
+        assertTrue(createdOrgId.isNotBlank(), "Organization must be created first")
+        val user = service.createHumanUser(
+            orgId = createdOrgId,
+            email = "jane.doe@integration-test.com",
+            firstName = "Jane",
+            lastName = "Doe",
+            password = "SecureP@ssw0rd!",
+            isEmailVerified = true
+        )
+        assertNotNull(user.id)
+        assertTrue(user.id.isNotBlank(), "User ID should not be blank")
+        createdUserWithPasswordId = user.id
+        println("Created human user with password: ${user.id}")
+    }
+
+    @Test
+    @Order(15)
+    fun `should send password reset email`() {
+        assertTrue(createdUserWithPasswordId.isNotBlank(), "User with password must be created first")
+        assertDoesNotThrow {
+            service.sendPasswordResetEmail(createdUserWithPasswordId)
+        }
+        println("Sent password reset email to user $createdUserWithPasswordId")
+    }
+
     // --- Error handling tests ---
 
     @Test
-    @Order(10)
+    @Order(20)
     fun `should throw ZitadelException for non-existent user`() {
         val exception = assertThrows<ZitadelException> {
             service.getUserById("non-existent-user-id-12345")

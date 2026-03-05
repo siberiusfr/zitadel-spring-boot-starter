@@ -20,3 +20,9 @@ data class ZitadelProject(
     val state: String? = null,
     val creationDate: String? = null,
 )
+
+data class ProjectRole(
+    val key: String,
+    val displayName: String,
+    val group: String = "",
+)

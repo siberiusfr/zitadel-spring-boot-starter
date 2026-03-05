@@ -17,6 +17,7 @@ import org.springframework.http.MediaType
 import org.springframework.web.client.RestClient
 import tn.cyberious.zitadel.config.ZitadelProperties
 import tn.cyberious.zitadel.exception.ZitadelException
+import tn.cyberious.zitadel.models.ProjectRole
 import tn.cyberious.zitadel.models.ZitadelOrganization
 import tn.cyberious.zitadel.models.ZitadelProject
 import tn.cyberious.zitadel.models.ZitadelUser
@@ -178,19 +179,40 @@ class ZitadelManagementService(
         )
     }
 
+    fun deactivateOrganization(orgId: String) {
+        apiPost("/admin/v1/orgs/$orgId/_deactivate", emptyMap<String, Any>(), JsonNode::class.java)
+    }
+
+    fun reactivateOrganization(orgId: String) {
+        apiPost("/admin/v1/orgs/$orgId/_reactivate", emptyMap<String, Any>(), JsonNode::class.java)
+    }
+
     // --- Users ---
 
-    fun createHumanUser(orgId: String, email: String, firstName: String, lastName: String): ZitadelUser {
-        val body = mapOf(
+    fun createHumanUser(
+        orgId: String,
+        email: String,
+        firstName: String,
+        lastName: String,
+        password: String? = null,
+        isEmailVerified: Boolean = true,
+    ): ZitadelUser {
+        val body = mutableMapOf<String, Any>(
             "profile" to mapOf(
                 "givenName" to firstName,
                 "familyName" to lastName,
             ),
             "email" to mapOf(
                 "email" to email,
-                "isVerified" to true,
+                "isVerified" to isEmailVerified,
             ),
         )
+        if (password != null) {
+            body["password"] = mapOf(
+                "password" to password,
+                "changeRequired" to false,
+            )
+        }
         val response = apiPost("/v2/users/human", body, JsonNode::class.java, orgId)
         return ZitadelUser(
             id = response["userId"]?.asText() ?: "",
@@ -225,6 +247,18 @@ class ZitadelManagementService(
         )
     }
 
+    fun sendPasswordResetEmail(userId: String) {
+        apiPost(
+            "/v2/users/$userId/password_reset",
+            mapOf(
+                "sendLink" to mapOf(
+                    "notificationType" to "NOTIFICATION_TYPE_Email",
+                )
+            ),
+            JsonNode::class.java
+        )
+    }
+
     // --- Projects (v1 - TODO: migrate to v2 when Zitadel provides v2 project endpoints) ---
 
     fun createProject(orgId: String, name: String): ZitadelProject {
@@ -242,24 +276,38 @@ class ZitadelManagementService(
         )
     }
 
-    // TODO: migrate to v2 when Zitadel provides v2 project role endpoints
     fun addRoleToProject(orgId: String, projectId: String, roleKey: String, displayName: String) {
+        addRolesToProject(orgId, projectId, listOf(ProjectRole(key = roleKey, displayName = displayName)))
+    }
+
+    fun addRolesToProject(orgId: String, projectId: String, roles: List<ProjectRole>) {
         apiPost(
             "/management/v1/projects/$projectId/roles/_bulk",
             mapOf(
-                "roles" to listOf(
-                    mapOf(
-                        "key" to roleKey,
-                        "displayName" to displayName,
-                    )
-                )
+                "roles" to roles.map { role ->
+                    mutableMapOf<String, String>(
+                        "key" to role.key,
+                        "displayName" to role.displayName,
+                    ).also { if (role.group.isNotBlank()) it["group"] = role.group }
+                }
             ),
             JsonNode::class.java,
             orgId
         )
     }
 
-    // TODO: migrate to v2 when Zitadel provides v2 user grant endpoints
+    fun grantProjectToOrganization(orgId: String, projectId: String, grantedOrgId: String, roleKeys: List<String>) {
+        apiPost(
+            "/management/v1/projects/$projectId/grants",
+            mapOf(
+                "grantedOrgId" to grantedOrgId,
+                "roleKeys" to roleKeys,
+            ),
+            JsonNode::class.java,
+            orgId
+        )
+    }
+
     fun assignRoleToUser(orgId: String, projectId: String, userId: String, roles: List<String>) {
         apiPost(
             "/management/v1/users/$userId/grants",

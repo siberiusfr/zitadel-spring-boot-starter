@@ -93,18 +93,33 @@ class MyService(private val zitadel: ZitadelManagementService) {
 
 ## Available Methods
 
-| Method | API Endpoint | Version |
-|--------|-------------|---------|
-| `createOrganization(name)` | `POST /v2/organizations` | v2 |
-| `getOrganization(orgId)` | `GET /v2/organizations/{orgId}` | v2 |
-| `createHumanUser(orgId, email, firstName, lastName)` | `POST /v2/users` | v2 |
-| `createMachineUser(orgId, username, name)` | `POST /v2/users` | v2 |
-| `getUserById(userId)` | `GET /v2/users/{userId}` | v2 |
-| `createProject(orgId, name)` | `POST /management/v1/projects` | v1* |
-| `addRoleToProject(orgId, projectId, roleKey, displayName)` | `POST /management/v1/projects/{projectId}/roles` | v1* |
-| `assignRoleToUser(orgId, projectId, userId, roles)` | `POST /management/v1/users/{userId}/grants` | v1* |
+### Organizations
 
-\* These methods use the Zitadel v1 Management API because v2 equivalents are not yet available. They will be migrated to v2 when Zitadel provides those endpoints.
+| Method | API Endpoint |
+|--------|-------------|
+| `createOrganization(name)` | `POST /v2/organizations` |
+| `getOrganization(orgId)` | `GET /management/v1/orgs/me` |
+| `deactivateOrganization(orgId)` | `POST /admin/v1/orgs/{orgId}/_deactivate` |
+| `reactivateOrganization(orgId)` | `POST /admin/v1/orgs/{orgId}/_reactivate` |
+
+### Users
+
+| Method | API Endpoint |
+|--------|-------------|
+| `createHumanUser(orgId, email, firstName, lastName, password?, isEmailVerified?)` | `POST /v2/users/human` |
+| `createMachineUser(orgId, username, name)` | `POST /management/v1/users/machine` |
+| `getUserById(userId)` | `GET /v2/users/{userId}` |
+| `sendPasswordResetEmail(userId)` | `POST /v2/users/{userId}/password_reset` |
+
+### Projects
+
+| Method | API Endpoint |
+|--------|-------------|
+| `createProject(orgId, name)` | `POST /management/v1/projects` |
+| `addRoleToProject(orgId, projectId, roleKey, displayName)` | `POST /management/v1/projects/{projectId}/roles/_bulk` |
+| `addRolesToProject(orgId, projectId, roles)` | `POST /management/v1/projects/{projectId}/roles/_bulk` |
+| `grantProjectToOrganization(orgId, projectId, grantedOrgId, roleKeys)` | `POST /management/v1/projects/{projectId}/grants` |
+| `assignRoleToUser(orgId, projectId, userId, roles)` | `POST /management/v1/users/{userId}/grants` |
 
 ## Authentication
 
