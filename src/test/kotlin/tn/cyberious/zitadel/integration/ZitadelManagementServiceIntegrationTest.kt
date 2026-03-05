@@ -34,8 +34,11 @@ class ZitadelManagementServiceIntegrationTest {
         @JvmStatic
         @BeforeAll
         fun initDocker() {
-            // Fix for Docker Engine 29.x + Testcontainers incompatibility
-            DockerApiVersionFix.patchTestcontainers()
+            // Fix for Docker Engine 29.x + Testcontainers incompatibility (Windows TCP mode)
+            // Skip on CI / Linux where Testcontainers works natively
+            if (System.getenv("CI") == null) {
+                DockerApiVersionFix.patchTestcontainers()
+            }
         }
     }
 
@@ -70,7 +73,7 @@ class ZitadelManagementServiceIntegrationTest {
             .withEnv("ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE", "disable")
             .withEnv("ZITADEL_EXTERNALSECURE", "false")
             .withEnv("ZITADEL_EXTERNALPORT", hostPort.toString())
-            .withEnv("ZITADEL_EXTERNALDOMAIN", "127.0.0.1")
+            .withEnv("ZITADEL_EXTERNALDOMAIN", "localhost")
             .withCopyFileToContainer(
                 MountableFile.forClasspathResource("zitadel-steps.yaml"),
                 "/zitadel-steps.yaml"
@@ -80,9 +83,6 @@ class ZitadelManagementServiceIntegrationTest {
                 "/machinekey",
                 org.testcontainers.containers.BindMode.READ_WRITE
             )
-            .withCreateContainerCmdModifier { cmd ->
-                cmd.hostConfig!!.withSysctls(mapOf("net.ipv6.conf.all.disable_ipv6" to "1"))
-            }
             .withCommand(
                 "start-from-init",
                 "--masterkey", "MasterkeyNeedsToHave32Characters",
@@ -104,7 +104,7 @@ class ZitadelManagementServiceIntegrationTest {
         val machineKeyFile = machinekeyDir.resolve("zitadel-admin-sa.json")
         val machineKeyJson = Files.readString(machineKeyFile)
 
-        val domain = "http://127.0.0.1:$hostPort"
+        val domain = "http://localhost:$hostPort"
 
         val properties = ZitadelProperties(
             domain = domain,
@@ -124,15 +124,12 @@ class ZitadelManagementServiceIntegrationTest {
         if (::network.isInitialized) network.close()
     }
 
-    private fun findFreePort(): Int = ServerSocket(0).use { it.localPort }
-
     private fun waitForZitadelApi(port: Int) {
         val maxRetries = 30
         val retryDelay = 2000L
-        // Check both the OIDC discovery endpoint and the management API
         for (i in 1..maxRetries) {
             try {
-                val url = java.net.URI("http://127.0.0.1:$port/management/v1/healthz").toURL()
+                val url = java.net.URI("http://localhost:$port/management/v1/healthz").toURL()
                 val conn = url.openConnection() as java.net.HttpURLConnection
                 conn.connectTimeout = 2000
                 conn.readTimeout = 2000
