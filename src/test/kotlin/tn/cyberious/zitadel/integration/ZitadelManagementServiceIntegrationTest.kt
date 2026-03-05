@@ -5,8 +5,10 @@ import org.junit.jupiter.api.Assertions.*
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.containers.output.Slf4jLogConsumer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.utility.MountableFile
+import org.slf4j.LoggerFactory
 import tn.cyberious.zitadel.config.ZitadelProperties
 import tn.cyberious.zitadel.exception.ZitadelException
 import tn.cyberious.zitadel.service.ZitadelManagementService
@@ -24,6 +26,7 @@ class ZitadelManagementServiceIntegrationTest {
     private lateinit var postgres: PostgreSQLContainer<*>
     private lateinit var zitadel: GenericContainer<*>
 
+    private val log = LoggerFactory.getLogger(ZitadelManagementServiceIntegrationTest::class.java)
     private lateinit var machinekeyDir: java.nio.file.Path
     private var createdOrgId: String = ""
     private var createdHumanUserId: String = ""
@@ -89,6 +92,7 @@ class ZitadelManagementServiceIntegrationTest {
                 "--tlsMode", "disabled",
                 "--steps", "/zitadel-steps.yaml"
             )
+            .withLogConsumer(Slf4jLogConsumer(log).withPrefix("ZITADEL"))
             .waitingFor(
                 Wait.forHttp("/debug/ready")
                     .forPort(8080)
@@ -96,7 +100,14 @@ class ZitadelManagementServiceIntegrationTest {
             )
 
         zitadel.portBindings = listOf("$hostPort:8080")
-        zitadel.start()
+        try {
+            zitadel.start()
+        } catch (e: Exception) {
+            println("=== Zitadel container logs ===")
+            println(zitadel.logs)
+            println("=== End Zitadel container logs ===")
+            throw e
+        }
 
         // Wait for Zitadel to fully initialize (gRPC takes longer than REST health check)
         waitForZitadelApi(hostPort)
